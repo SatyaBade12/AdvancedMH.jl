@@ -41,12 +41,13 @@ used if `chain_type=Chains`.
 types are `chain_type=Chains` if `MCMCChains` is imported, or 
 `chain_type=StructArray` if `StructArrays` is imported.
 """
-struct MetropolisHastings{D} <: MHSampler
+mutable struct MetropolisHastings{D} <: MHSampler
     proposal::D
+    n_acceptances::Integer
 end
 
-StaticMH(d) = MetropolisHastings(StaticProposal(d))
-RWMH(d) = MetropolisHastings(RandomWalkProposal(d))
+StaticMH(d) = MetropolisHastings(StaticProposal(d), 0)
+RWMH(d) = MetropolisHastings(RandomWalkProposal(d), 0)
 
 function propose(rng::Random.AbstractRNG, sampler::MHSampler, model::DensityModel)
     return propose(rng, sampler.proposal, model)
@@ -62,9 +63,11 @@ end
 
 function transition(sampler::MHSampler, model::DensityModel, params)
     logdensity = AdvancedMH.logdensity(model, params)
+    sampler.n_acceptances = 0
     return transition(sampler, model, params, logdensity)
 end
 function transition(sampler::MHSampler, model::DensityModel, params, logdensity::Real)
+    sampler.n_acceptances += 1
     return Transition(params, logdensity)
 end
 
